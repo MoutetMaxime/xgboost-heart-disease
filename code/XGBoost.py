@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class Node:
     def __init__(self, data, targets, gradients=None, hessians=None, feature=None, threshold=None):
         self.data = data  # Données à ce nœud
@@ -15,7 +16,7 @@ class Node:
         return self.left is None and self.right is None
 
 class XGBoost:
-    def __init__(self, learning_rate=0.1,max_depth=3,number_trees=100):
+    def __init__(self, learning_rate=0.1, max_depth=3, number_trees=100):
         self.root = None
         self.max_depth = max_depth
         self.learning_rate = learning_rate
@@ -132,18 +133,19 @@ class XGBoost:
         predictions = [1 if p > 0.5 else 0 for p in predictions]
         return predictions
 
-# Génération des données d'entraînement
-np.random.seed(42)  # Fixer la graine pour des résultats reproductibles
-data_train = np.random.rand(20, 5)  # Données de taille 20x5
-targets_train = np.random.randint(0, 2, 20)  # Cibles binaires (0 ou 1)
 
-# Génération des données de test
-data_test = np.random.rand(10, 5)  # Données de taille 10x5
+if __name__ == "__main__":
+    # Génération des données d'entraînement
+    np.random.seed(42)  # Fixer la graine pour des résultats reproductibles
+    data_train = np.random.rand(20, 5)  # Données de taille 20x5
+    targets_train = np.random.randint(0, 2, 20)  # Cibles binaires (0 ou 1)
 
-# Création et entraînement du modèle
-model = XGBoost(learning_rate=0.1, max_depth=3, number_trees=10)
-model.fit(data_train, targets_train)
+    # Génération des données de test
+    data_test = np.random.rand(10, 5)  # Données de taille 10x5
 
-# Prédiction sur les données de test
-predictions = model.predict_new_data(data_test)
-print("Prédictions :", predictions)
+    # Création et entraînement du modèle
+    model = XGBoost(learning_rate=0.1, max_depth=3, number_trees=10)
+    model.fit(data_train, targets_train)
+
+    # Prédiction sur les données de test
+    predictions = model.predict_new_data(data_test)
