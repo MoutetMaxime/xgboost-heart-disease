@@ -4,6 +4,7 @@ from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, recall_s
 from sklearn.model_selection import train_test_split
 from ucimlrepo import fetch_ucirepo
 from XGBoost import XGBoost
+from XGConfig import XGConfig
 
 
 def load_data():
@@ -51,7 +52,8 @@ if __name__ == "__main__":
     X_train_encoded, X_test_encoded = encode_categorical_features(X_train, X_test)
 
     #model = xgb.XGBClassifier(learning_rate=0.309467, n_estimators=801, max_depth=3, min_child_weight=3, colsample_bytree=0.658399, subsample=0.642807, gamma=0.761624, reg_alpha=1.135854, reg_lambda=97.30065)
-    model = XGBoost(learning_rate=0.1, max_depth=3, number_trees=10)
+    config = XGConfig(learning_rate=0.309467, n_estimators=801, max_depth=3, min_child_weight=3, colsample_bytree=0.658399, subsample=0.642807, gamma=0.761624, reg_alpha=1.135854, reg_lambda=97.30065)
+    model = XGBoost(config)
     model.fit(X_train.to_numpy(), y_train.to_numpy())
 
     # Prédiction
