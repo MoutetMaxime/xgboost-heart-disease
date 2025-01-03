@@ -58,6 +58,3 @@ The heart disease dataset can be accessed at the following link:
 }
 ```
 
-## License
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
-
