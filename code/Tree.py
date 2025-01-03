@@ -15,10 +15,11 @@ class Node:
         return self.left is None and self.right is None
 
 class XGBoost:
-    def __init__(self, learning_rate=0.1):
+    def __init__(self, learning_rate=0.1,max_depth=3,number_trees=100):
         self.root = None
-        self.max_depth = 3
+        self.max_depth = max_depth
         self.learning_rate = learning_rate
+        self.number_trees = number_trees
         self.trees = []  # Liste des arbres appris
         self.predictions = None  # Prédictions initiales du modèle
 
@@ -28,7 +29,7 @@ class XGBoost:
     
     def update_predictions(self, tree, data):
         """Mise à jour des prédictions avec les nouveaux arbres."""
-        self.predictions += self.learning_rate * self.predict(tree, data)
+        self.predictions = (self.predictions + self.learning_rate * self.predict(tree, data)) / (1+self.learning_rate)
 
     def compute_gradients_and_hessians(self, data, targets):
         """Calcul des gradients et des hessians à partir des prédictions actuelles."""
@@ -75,9 +76,6 @@ class XGBoost:
                 g_right -= sorted_gradients[i-1]
                 h_right -= sorted_hessians[i-1]
 
-                if h_left == 0 or h_right == 0:
-                    continue  # Évite la division par zéro
-
                 # Calcul du score
                 score = (g_left**2) / (h_left + 1e-6) + (g_right**2) / (h_right + 1e-6)
 
@@ -116,3 +114,36 @@ class XGBoost:
         node.right = self.build_tree_algo_1(right_data, right_targets, right_gradients, right_hessians, max_depth - 1)
 
         return node
+
+    def fit(self, data, targets):
+        """Apprentissage du modèle."""
+        self.init_predictions(data)
+        for _ in range(self.number_trees):
+            gradients, hessians = self.compute_gradients_and_hessians(data, targets)
+            tree = self.build_tree_algo_1(data, targets, gradients, hessians, self.max_depth)
+            self.trees.append(tree)
+            self.update_predictions(tree, data)
+    
+    def predict_new_data(self, data):
+        """Prédiction des valeurs pour un ensemble de données."""
+        predictions = np.full(data.shape[0], 0.5)
+        for tree in self.trees:
+            predictions = (predictions + self.learning_rate * self.predict(tree, data)) / (1+self.learning_rate)
+        predictions = [1 if p > 0.5 else 0 for p in predictions]
+        return predictions
+
+# Génération des données d'entraînement
+np.random.seed(42)  # Fixer la graine pour des résultats reproductibles
+data_train = np.random.rand(20, 5)  # Données de taille 20x5
+targets_train = np.random.randint(0, 2, 20)  # Cibles binaires (0 ou 1)
+
+# Génération des données de test
+data_test = np.random.rand(10, 5)  # Données de taille 10x5
+
+# Création et entraînement du modèle
+model = XGBoost(learning_rate=0.1, max_depth=3, number_trees=10)
+model.fit(data_train, targets_train)
+
+# Prédiction sur les données de test
+predictions = model.predict_new_data(data_test)
+print("Prédictions :", predictions)
