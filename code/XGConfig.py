@@ -53,12 +53,13 @@ class Node:
     """
        Node class for the Decision Tree.
     """
-    def __init__(self, data: np.ndarray, targets: np.ndarray, gradients: np.ndarray=None, hessians: np.ndarray=None, feature: str=None, threshold: float=None):
+    def __init__(self, data: np.ndarray, targets: np.ndarray, gradients: np.ndarray=None, hessians: np.ndarray=None, real_feature: str = None, feature: str=None, threshold: float=None):
         self.data = data  # Node data
         self.targets = targets  # Node targets
         self.gradients = gradients  # Gradient vector
         self.hessians = hessians  # Hessian vector
         self.feature = feature  # Split feature
+        self.real_feature = real_feature # Real feature number
         self.threshold = threshold  # Split threshold
         self.left = None # Left child
         self.right = None # Right child
