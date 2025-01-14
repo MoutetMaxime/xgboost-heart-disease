@@ -64,19 +64,37 @@ if __name__ == "__main__":
     model = XGBoost(config)
     model.fit(X_train.to_numpy(), y_train.to_numpy())
 
+    baseline = xgb.XGBClassifier(learning_rate=0.309467, n_estimators=801, max_depth=3, min_child_weight=3, colsample_bytree=0.658399, subsample=0.642807, gamma=0.761624, reg_alpha=1.135854, reg_lambda=97.30065, random_state=42)
+    baseline.fit(X_train_encoded, y_train)
+
     # Prédiction
     y_train_pred = model.predict_new_data(X_train.to_numpy())
     y_test_pred = model.predict_new_data(X_test.to_numpy())
+
+    y_train_pred_b = baseline.predict(X_train_encoded)
+    y_test_pred_b = baseline.predict(X_test_encoded)
 
     # Calcul des métriques
     accuracy_train, specificity_train, sensitivity_train, f1_train = get_metrics(y_train_pred, y_train)
     accuracy_test, specificity_test, sensitivity_test, f1_test = get_metrics(y_test_pred, y_test)
 
+    accuracy_train_b, specificity_train_b, sensitivity_train_b, f1_train_b = get_metrics(y_train_pred_b, y_train)
+    accuracy_test_b, specificity_test_b, sensitivity_test_b, f1_test_b = get_metrics(y_test_pred_b, y_test)
+
+
     print(f"Train: Accuracy={accuracy_train:.4f}, Specificity={specificity_train:.4f}, Sensitivity={sensitivity_train:.4f}, F1={f1_train:.4f}")
     print(f"Test: Accuracy={accuracy_test:.4f}, Specificity={specificity_test:.4f}, Sensitivity={sensitivity_test:.4f}, F1={f1_test:.4f}")
+
+    print(f"Train (baseline): Accuracy={accuracy_train_b:.4f}, Specificity={specificity_train_b:.4f}, Sensitivity={sensitivity_train_b:.4f}, F1={f1_train_b:.4f}")
+    print(f"Test (baseline): Accuracy={accuracy_test_b:.4f}, Specificity={specificity_test_b:.4f}, Sensitivity={sensitivity_test_b:.4f}, F1={f1_test_b:.4f}")
 
     # Confusion matrix
     print("Confusion matrix (Train):")
     print(confusion_matrix(y_train, y_train_pred))
     print("Confusion matrix (Test):")
     print(confusion_matrix(y_test, y_test_pred))
+    
+    print("Confusion matrix (Train) (baseline):")   
+    print(confusion_matrix(y_train, y_train_pred_b))
+    print("Confusion matrix (Test) (baseline):")
+    print(confusion_matrix(y_test, y_test_pred_b))
