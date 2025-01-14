@@ -62,14 +62,14 @@ if __name__ == "__main__":
     #model = xgb.XGBClassifier(learning_rate=0.309467, n_estimators=801, max_depth=3, min_child_weight=3, colsample_bytree=0.658399, subsample=0.642807, gamma=0.761624, reg_alpha=1.135854, reg_lambda=97.30065)
     config = XGConfig(learning_rate=0.309467, n_estimators=801, max_depth=3, min_child_weight=3, colsample_bytree=0.658399, subsample=0.642807, gamma=0.761624, reg_alpha=1.135854, reg_lambda=97.30065)
     model = XGBoost(config)
-    model.fit(X_train.to_numpy(), y_train.to_numpy())
+    model.fit(X_train_encoded.to_numpy(), y_train.to_numpy())
 
     baseline = xgb.XGBClassifier(learning_rate=0.309467, n_estimators=801, max_depth=3, min_child_weight=3, colsample_bytree=0.658399, subsample=0.642807, gamma=0.761624, reg_alpha=1.135854, reg_lambda=97.30065, random_state=42)
     baseline.fit(X_train_encoded, y_train)
 
     # Prédiction
-    y_train_pred = model.predict_new_data(X_train.to_numpy())
-    y_test_pred = model.predict_new_data(X_test.to_numpy())
+    y_train_pred = model.predict_new_data(X_train_encoded.to_numpy())
+    y_test_pred = model.predict_new_data(X_test_encoded.to_numpy())
 
     y_train_pred_b = baseline.predict(X_train_encoded)
     y_test_pred_b = baseline.predict(X_test_encoded)
@@ -93,7 +93,7 @@ if __name__ == "__main__":
     print(confusion_matrix(y_train, y_train_pred))
     print("Confusion matrix (Test):")
     print(confusion_matrix(y_test, y_test_pred))
-    
+
     print("Confusion matrix (Train) (baseline):")   
     print(confusion_matrix(y_train, y_train_pred_b))
     print("Confusion matrix (Test) (baseline):")
