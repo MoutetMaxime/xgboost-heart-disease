@@ -3,7 +3,7 @@ import xgboost as xgb
 from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, recall_score
 from sklearn.model_selection import train_test_split
 from ucimlrepo import fetch_ucirepo
-from XGBoostv2 import XGBoost
+from XGBoost import XGBoost
 from XGConfig import XGConfig
 
 

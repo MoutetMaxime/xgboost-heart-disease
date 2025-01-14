@@ -20,13 +20,14 @@ class XGBoost:
         """
         Initialize the predictions with 0.5 for all data points.
         """
-        return np.full(data.shape[0], 0.5)
+        return np.full(data.shape[0], 0.0)
 
-    def update_predictions(self, predictions: np.ndarray, tree: Node, data: np.ndarray):
+    def update_predictions(self, predictions: np.ndarray, tree: Node, data: np.ndarray,fit = True):
         """
         Update the predictions using the new decision tree.
         """
-        return (predictions + self.learning_rate * self.predict(tree, data)) / (1 + self.learning_rate)
+        pred = predictions + self.learning_rate * self.predict(tree, data,fit)
+        return pred
 
     def compute_gradients_and_hessians(
         self, predictions: np.ndarray, targets: np.ndarray
@@ -34,28 +35,41 @@ class XGBoost:
         """
         Compute the gradients and hessians for the log-loss function.
         """
-        gradients = predictions - targets  # Gradient for log-loss
-        hessians = predictions * (1 - predictions)  # Hessian for log-loss
+         # Sigmoid of the predictions (converting raw scores to probabilities)
+        probabilities = 1 / (1 + np.exp(-predictions))
+        # Gradient: (p_i - y_i)
+        gradients = probabilities - targets
+        # Hessian: p_i * (1 - p_i)
+        hessians = probabilities * (1 - probabilities)
         return gradients, hessians
 
-    def predict_single(self, tree: Node, row: np.ndarray):
+    def predict_single(self, tree: Node, row: np.ndarray, fit = True):
         """
         Predict the value for a single data point.
         """
-        while not tree.is_leaf():
-            if row[tree.feature] <= tree.threshold:
-                tree = tree.left
-            else:
-                tree = tree.right
-
+        if fit :
+            while not tree.is_leaf():
+                if row[tree.feature] <= tree.threshold:
+                    tree = tree.left
+                else:
+                    tree = tree.right
+        else :
+            while not tree.is_leaf():
+                if row[tree.real_feature] <= tree.threshold:
+                    tree = tree.left     
+                else:
+                    tree = tree.right
+        
         # Return the mean of the targets if not empty else 0.5
-        return np.mean(tree.targets) if tree.targets.size > 0 else 0.5
+        prediction = -np.sum(tree.gradients) / (np.sum(tree.hessians) + 1e-6)
+        return prediction
 
-    def predict(self, tree: Node, data: np.ndarray):
+    def predict(self, tree: Node, data: np.ndarray,fit = True):
         """
         Predict the values for a batch of data points.
         """
-        return np.array([self.predict_single(tree, row) for row in data])
+        pred = np.array([self.predict_single(tree, row, fit) for row in data])
+        return pred
 
     def find_best_split_algo_1(
         self,
@@ -80,7 +94,7 @@ class XGBoost:
             sorted_gradients = gradients[sorted_indices]
             sorted_hessians = hessians[sorted_indices]
 
-            g_left, h_left = 0, 0
+            g_left, h_left = 0.0, 0.0
             g_right, h_right = np.sum(sorted_gradients), np.sum(sorted_hessians)
 
             for i in range(1, num_samples):
@@ -91,11 +105,13 @@ class XGBoost:
 
                 # Compute the score Eq. 7
                 score = (
-                    (g_left**2) / (h_left + 1e-6)
+                    (g_left**2) / (h_left + self.config.reg_lambda)
                     + (g_right**2) / (h_right + self.config.reg_lambda)
                     - (g_left + g_right) ** 2
                     / (h_left + h_right + self.config.reg_lambda)
-                ) / 2 - self.config.gamma
+                - self.config.gamma - 
+                self.config.reg_alpha * abs((g_left + g_right) / (h_left + h_right + self.config.reg_lambda))
+                    ) / 2 
 
                 if score > best_score:
                     best_score = score
@@ -111,6 +127,7 @@ class XGBoost:
         gradients: np.ndarray,
         hessians: np.ndarray,
         max_depth: int,
+        features: np.ndarray
     ):
         """
         Recursively build the decision tree using the splitting algorithm 1.
@@ -127,12 +144,12 @@ class XGBoost:
         feature, threshold = self.find_best_split_algo_1(
             data, targets, gradients, hessians
         )
-
         if feature is None:
             return Node(
                 data, targets, gradients=gradients, hessians=hessians
             )  # No split found
-
+        
+        feat = features[feature]
         # Split the data
         left_mask = data[:, feature] <= threshold
         right_mask = ~left_mask
@@ -152,6 +169,7 @@ class XGBoost:
             gradients=gradients,
             hessians=hessians,
             feature=feature,
+            real_feature=feat,
             threshold=threshold,
         )
 
@@ -160,7 +178,7 @@ class XGBoost:
             and right_data.size >= self.config.min_child_weight
         ):
             node.left = self.build_tree_algo_1(
-                left_data, left_targets, left_gradients, left_hessians, max_depth - 1
+                left_data, left_targets, left_gradients, left_hessians, max_depth - 1,features
             )
             node.right = self.build_tree_algo_1(
                 right_data,
@@ -168,6 +186,7 @@ class XGBoost:
                 right_gradients,
                 right_hessians,
                 max_depth - 1,
+                features
             )
 
         return node
@@ -185,7 +204,7 @@ class XGBoost:
                 indices = np.random.choice(
                     data.shape[0],
                     size=int(self.config.subsample * data.shape[0]),
-                    replace=False,
+                    replace=True,
                 )
             else:
                 indices = np.arange(data.shape[0])
@@ -204,24 +223,28 @@ class XGBoost:
                 features = np.random.choice(
                     data.shape[1], size=num_features, replace=False
                 )
-                current_data = current_data[:, features]
+            else :
+                features = np.arange(data.shape[1])
+            
+            current_data = current_data[:, features]
 
             tree = self.build_tree_algo_1(
-                current_data, current_targets, gradients, hessians, self.max_depth
+                current_data, current_targets, gradients, hessians, self.max_depth,features
             )
             self.trees.append(tree)
             preds[indices] = self.update_predictions(current_preds, tree, current_data)
+
+
 
     def predict_new_data(self, data: np.ndarray):
         """
         Predict the values for new data.
         """
-        predictions = np.full(data.shape[0], 0.5)
+        predictions = np.full(data.shape[0], 0.0)
         for tree in self.trees:
-            predictions = (predictions + self.learning_rate * self.predict(tree, data)) / (
-                1 + self.learning_rate
-            )
-        predictions = [1 if p > 0.5 else 0 for p in predictions]
+            predictions = self.update_predictions(predictions, tree, data, fit = False)
+        probabilities = 1 / (1 + np.exp(-predictions))
+        predictions = [1 if p > 0.5 else 0 for p in probabilities]
         return predictions
 
     def score(self, data: np.ndarray, targets: np.ndarray):
@@ -230,32 +253,3 @@ class XGBoost:
         """
         predictions = self.predict_new_data(data)
         return np.mean(predictions == targets)
-
-
-if __name__ == "__main__":
-    # Génération des données d'entraînement
-    np.random.seed(42)  # Fixer la graine pour des résultats reproductibles
-
-    data_train = np.random.rand(1000, 5)  # Données de taille 20x5
-    targets_train = np.random.randint(0, 2, 1000)  # Cibles binaires (0 ou 1)
-
-    # Génération des données de test
-    data_test = np.random.rand(10, 5)  # Données de taille 10x5
-    targets_test = data_test[:, 0] > 0.5  # Cibles binaires (0 ou 1)
-
-    # Création et entraînement du modèle
-    config = XGConfig(
-        max_depth=3,
-        n_estimators=801,
-        min_child_weight=3,
-        subsample=0.642807,
-        colsample_bytree=0.658399,
-    )
-    model = XGBoost(config)
-    model.fit(data_train, targets_train)
-
-    print([tree.get_height() for tree in model.trees])
-
-    # Calcul de la précision
-    accuracy = model.score(data_test, targets_test)
-    print(f"Accuracy={accuracy:.4f}")
