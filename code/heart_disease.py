@@ -6,6 +6,14 @@ from ucimlrepo import fetch_ucirepo
 from XGBoost import XGBoost
 from XGConfig import XGConfig
 
+def seed_everything(seed: int):
+    import random
+    import numpy as np
+    
+    random.seed(seed)
+    np.random.seed(seed)
+    
+seed_everything(42)
 
 def load_data():
     heart_disease = fetch_ucirepo(id=45) 
