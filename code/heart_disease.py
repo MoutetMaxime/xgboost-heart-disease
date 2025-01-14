@@ -47,7 +47,7 @@ def get_metrics(y_pred, y_true):
 if __name__ == "__main__":
     X, y = load_data()
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
     X_train_encoded, X_test_encoded = encode_categorical_features(X_train, X_test)
 

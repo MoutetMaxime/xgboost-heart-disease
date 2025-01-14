@@ -37,9 +37,7 @@ class XGBoost:
         """
          # Sigmoid of the predictions (converting raw scores to probabilities)
         probabilities = 1 / (1 + np.exp(-predictions))
-        # Gradient: (p_i - y_i)
         gradients = probabilities - targets
-        # Hessian: p_i * (1 - p_i)
         hessians = probabilities * (1 - probabilities)
         return gradients, hessians
 
@@ -109,9 +107,9 @@ class XGBoost:
                     + (g_right**2) / (h_right + self.config.reg_lambda)
                     - (g_left + g_right) ** 2
                     / (h_left + h_right + self.config.reg_lambda)
-                - self.config.gamma - 
-                self.config.reg_alpha * abs((g_left + g_right) / (h_left + h_right + self.config.reg_lambda))
                     ) / 2 
+                - self.config.gamma 
+                - self.config.reg_alpha * abs((g_left + g_right) / (h_left + h_right + self.config.reg_lambda))
 
                 if score > best_score:
                     best_score = score
